@@ -37,5 +37,9 @@
 	<string>LifeOptimizer uses your location only when a possible emergency is detected, so it can be included in the incident sent to your emergency contact and simulated dispatch.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>LifeOptimizer may use the microphone for an optional speech check during a medium-confidence alert.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>LifeOptimizer uses the front camera to track facial features for personalized anomaly detection. No video is recorded or transmitted.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>LifeOptimizer uses motion sensors to detect unusual device movement that may corroborate a facial anomaly.</string>
 </dict>
 </plist>

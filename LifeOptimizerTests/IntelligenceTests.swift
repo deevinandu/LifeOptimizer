@@ -210,7 +210,7 @@ final class IntelligenceTests: XCTestCase {
             motion:   MotionScore(totalScore: 0.1, accelerationScore: 0.1, jerkScore: 0.1, gyroScore: 0.1),
             temporal: 0.05
         )
-        XCTAssertLessThan(result.finalScore, DetectionThresholds.normalUpperBound)
+        XCTAssertLessThan(result.finalScore, DetectionConfig.mediumThreshold)
         XCTAssertEqual(result.classification, .normal)
     }
 
@@ -222,7 +222,7 @@ final class IntelligenceTests: XCTestCase {
             motion:   MotionScore(totalScore: 0.85, accelerationScore: 0.8, jerkScore: 0.9, gyroScore: 0.8),
             temporal: 0.90
         )
-        XCTAssertGreaterThan(result.finalScore, DetectionThresholds.mediumUpperBound)
+        XCTAssertGreaterThan(result.finalScore, DetectionConfig.highThreshold)
         XCTAssertEqual(result.classification, .high)
     }
 
@@ -248,25 +248,25 @@ final class IntelligenceTests: XCTestCase {
 
     func test_classification_belowNormalBound_isNormal() {
         let engine = ConfidenceEngine()
-        let cls = engine.classify(score: DetectionThresholds.normalUpperBound - 0.01)
+        let cls = engine.classify(score: DetectionConfig.mediumThreshold - 0.01)
         XCTAssertEqual(cls, .normal)
     }
 
     func test_classification_atNormalBound_isMedium() {
         let engine = ConfidenceEngine()
-        let cls = engine.classify(score: DetectionThresholds.normalUpperBound)
+        let cls = engine.classify(score: DetectionConfig.mediumThreshold)
         XCTAssertEqual(cls, .medium)
     }
 
     func test_classification_aboveMediumBound_isHigh() {
         let engine = ConfidenceEngine()
-        let cls = engine.classify(score: DetectionThresholds.mediumUpperBound + 0.01)
+        let cls = engine.classify(score: DetectionConfig.highThreshold + 0.01)
         XCTAssertEqual(cls, .high)
     }
 
     func test_classification_atMediumBound_isMedium() {
         let engine = ConfidenceEngine()
-        let cls = engine.classify(score: DetectionThresholds.mediumUpperBound)
+        let cls = engine.classify(score: DetectionConfig.highThreshold)
         XCTAssertEqual(cls, .medium)
     }
 

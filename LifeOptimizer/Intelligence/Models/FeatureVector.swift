@@ -1,28 +1,15 @@
 // FeatureVector.swift
-// LifeOptimizer — Shared Contracts (Laptop A ↔ Laptop B integration surface)
+// LifeOptimizer — Sensor Feature Types (Laptop A internal)
 //
-// IMPORTANT: Laptop B should ONLY import these types — never ARKit or CoreMotion directly.
-// All sensing types are behind protocols that conform to these contracts.
+// DetectionClassification, DetectionResult, and UserResponse are defined
+// in iOS/Models/AppModels.swift (the single canonical source).
+// This file defines ONLY the sensor-layer types used by the intelligence engine.
 
 import Foundation
 
-// MARK: - Classification
-
-/// Anomaly classification levels.
-/// Thresholds are configurable demo values — NOT clinical values.
-public enum DetectionClassification: String, Codable, Sendable, CaseIterable {
-    case normal = "NORMAL"
-    case medium = "MEDIUM"
-    case high   = "HIGH"
-}
-
-/// Configurable threshold constants. Change these to tune sensitivity.
-public enum DetectionThresholds {
-    /// Below this → NORMAL
-    public static let normalUpperBound: Double = 0.35
-    /// Below this → MEDIUM; above this → HIGH
-    public static let mediumUpperBound: Double = 0.70
-}
+// Re-export threshold constants so Laptop A's engine code doesn't need
+// to reference iOS/Detection/DetectionConfig.swift directly.
+// (DetectionConfig is defined by Laptop B.)
 
 // MARK: - Facial Feature Vector
 
@@ -296,61 +283,10 @@ public struct SpeechScore: Sendable {
     public init(totalScore: Double) { self.totalScore = totalScore }
 }
 
-// MARK: - Detection Result  ← PRIMARY OUTPUT FOR LAPTOP B
+// NOTE: DetectionResult, DetectionEvent, and UserResponse are defined in
+// iOS/Models/AppModels.swift — this avoids duplicate type definitions
+// when both source trees are compiled in the same Xcode target.
 
-/// The primary output model. Laptop B should depend only on this struct.
-public struct DetectionResult: Sendable, Codable {
-    public let facialScore:    Double
-    public let depthScore:     Double
-    public let motionScore:    Double
-    public let temporalScore:  Double
-    public let speechScore:    Double?
-    public let finalScore:     Double
-    public let classification: DetectionClassification
-    public let timestamp:      Date
-
-    public init(
-        facialScore:    Double,
-        depthScore:     Double,
-        motionScore:    Double,
-        temporalScore:  Double,
-        speechScore:    Double? = nil,
-        finalScore:     Double,
-        classification: DetectionClassification,
-        timestamp:      Date = Date()
-    ) {
-        self.facialScore    = facialScore
-        self.depthScore     = depthScore
-        self.motionScore    = motionScore
-        self.temporalScore  = temporalScore
-        self.speechScore    = speechScore
-        self.finalScore     = finalScore
-        self.classification = classification
-        self.timestamp      = timestamp
-    }
-}
-
-// MARK: - Detection Events  ← STATE MACHINE OUTPUT
-
-/// Events emitted by DetectionStateMachine.
-/// Laptop B subscribes to these via DetectionProvider.
-public enum DetectionEvent: Sendable {
-    case classificationChanged(DetectionResult)
-    case escalatedToMedium(DetectionResult)
-    case escalatedToHigh(DetectionResult)
-    case resolvedToNormal(DetectionResult)
-    case userConfirmedBenign(DetectionResult)
-}
-
-/// User response to a medium-confidence alert.
-public enum UserResponse: Sendable {
-    /// "I'm fine" — store benign anomaly, return to NORMAL
-    case okay
-    /// "I need help" — immediately escalate to HIGH
-    case needsHelp
-    /// No response within the timeout window — escalate to HIGH
-    case timeout
-}
 
 // MARK: - Baseline Score (internal, but exposed for integration)
 

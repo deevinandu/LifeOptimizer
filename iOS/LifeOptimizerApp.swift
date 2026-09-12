@@ -1,3 +1,4 @@
+import ARKit
 import SwiftData
 import SwiftUI
 
@@ -16,39 +17,48 @@ struct LifeOptimizerApp: App {
         }
         modelContainer = container
 
-        // --- Dependency wiring -------------------------------------------------
-        // To swap in Laptop A's real engine once it exists, replace this one
-        // line with the real `DetectionProvider` -- nothing else in the app
-        // needs to change. See INTEGRATION_B.md.
-        let detectionProvider = MockDetectionProvider()
-
+        // --- Detection engine wiring -------------------------------------------
+        // Use the real Laptop A engine when ARKit face tracking is supported
+        // (physical iPhone with TrueDepth front camera).
+        // Fall back to MockDetectionProvider on Simulator or unsupported devices.
         let apiClient = APIClient()
+
+        let detectionProvider: DetectionProvider & DetectionFeedbackReceiver
+        if ARFaceTrackingConfiguration.isSupported {
+            // Real engine: ARKit + CoreMotion + mock TrueDepth
+            let liveProvider = LiveDetectionProvider(useDemoMode: false)
+            liveProvider.start()
+            AppEnvironment.shared.liveDetectionProvider = liveProvider
+            detectionProvider = liveProvider
+        } else {
+            // Simulator / unsupported device: deterministic mock
+            let mockProvider = MockDetectionProvider()
+            AppEnvironment.shared.mockDetectionProvider = mockProvider
+            detectionProvider = mockProvider
+        }
+
+        // --- Emergency infrastructure ------------------------------------------
         let locationManager = LocationManager()
-        let alarmManager = AlarmManager()
+        let alarmManager    = AlarmManager()
         let emergencyService = BackendEmergencyService(apiClient: apiClient)
         let emergencyManager = EmergencyManager(
             locationProvider: locationManager,
-            alarmService: alarmManager,
+            alarmService:     alarmManager,
             emergencyService: emergencyService
         )
 
         let appState = AppState(
             detectionProvider: detectionProvider,
-            feedbackReceiver: detectionProvider,
-            emergencyManager: emergencyManager
+            feedbackReceiver:  detectionProvider,
+            emergencyManager:  emergencyManager
         )
-
         appState.configure(modelContext: container.mainContext)
 
-        _appState = StateObject(wrappedValue: appState)
+        _appState       = StateObject(wrappedValue: appState)
         _emergencyManager = StateObject(wrappedValue: emergencyManager)
 
-        // Demo-mode control lives on `MockDetectionProvider` itself; expose
-        // it (and the API client, for the Settings backend-URL field)
-        // globally via `AppEnvironment` so views can reach them without
-        // knowing concrete networking/provider types.
-        AppEnvironment.shared.mockDetectionProvider = detectionProvider
         AppEnvironment.shared.apiClient = apiClient
+        appState.startMonitoring()
     }
 
     var body: some Scene {
@@ -61,12 +71,13 @@ struct LifeOptimizerApp: App {
     }
 }
 
-/// Small process-wide holder for the demo-mode hook. Kept separate from the
-/// `DetectionProvider` protocol itself so the protocol stays exactly what a
-/// real Laptop-A engine would implement -- demo control is a mock-only
-/// concept.
+/// Process-wide environment holder for objects that need to be accessed
+/// from SwiftUI views without threading through every EnvironmentObject.
 final class AppEnvironment {
     static let shared = AppEnvironment()
+    /// Set when running on a device with ARKit face tracking support.
+    var liveDetectionProvider: LiveDetectionProvider?
+    /// Set when running on Simulator or unsupported hardware.
     var mockDetectionProvider: MockDetectionProvider?
     var apiClient: APIClient?
     private init() {}

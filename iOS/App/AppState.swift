@@ -76,13 +76,13 @@ final class AppState: ObservableObject {
             phase = .monitoring
             cancelCountdown()
 
-        case .mediumConfidence:
+        case .medium:
             guard phase != .emergency, phase != .awaitingResponse else { return }
             pendingMediumResult = result
             phase = .awaitingResponse
             startCountdown()
 
-        case .highConfidence:
+        case .high:
             guard phase != .emergency else { return }
             cancelCountdown()
             Task { await self.trigger(result: result, userResponse: nil) }
@@ -97,7 +97,7 @@ final class AppState: ObservableObject {
         feedbackReceiver?.submit(response: response, for: result)
 
         switch response {
-        case .confirmedOkay:
+        case .okay:
             phase = .monitoring
 
         case .needsHelp, .timeout:
@@ -111,7 +111,7 @@ final class AppState: ObservableObject {
                 temporalScore: result.temporalScore,
                 speechScore: result.speechScore,
                 finalScore: max(result.finalScore, DetectionConfig.highThreshold + 0.05),
-                classification: .highConfidence,
+                classification: .high,
                 timestamp: .now
             )
             Task { await self.trigger(result: escalated, userResponse: response) }

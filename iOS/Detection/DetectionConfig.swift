@@ -17,8 +17,8 @@ enum DetectionConfig {
     }
 
     static func classify(_ score: Double) -> DetectionClassification {
-        if score > highThreshold { return .highConfidence }
-        if score >= mediumThreshold { return .mediumConfidence }
+        if score > highThreshold { return .high }
+        if score >= mediumThreshold { return .medium }
         return .normal
     }
 }

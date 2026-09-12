@@ -21,22 +21,20 @@ public enum SMState: Equatable, Sendable {
     case highConfidence
 }
 
-// MARK: - Detection Provider Protocol (Laptop B integration surface)
-
-/// Laptop B subscribes to this protocol. Never import ARKit/CoreMotion.
-public protocol DetectionProvider: AnyObject {
-    var detectionStream: AsyncStream<DetectionResult> { get }
-    var eventStream:     AsyncStream<DetectionEvent>  { get }
-    var currentState:    SMState                      { get }
-    func startMonitoring()
-    func stopMonitoring()
-    func submitUserResponse(_ response: UserResponse)
+/// Internal detection events emitted by the state machine.
+/// LiveDetectionProvider observes these to route to Laptop B's AppState.
+public enum SMDetectionEvent: Sendable {
+    case classificationChanged(DetectionResult)
+    case escalatedToMedium(DetectionResult)
+    case escalatedToHigh(DetectionResult)
+    case resolvedToNormal(DetectionResult)
+    case userConfirmedBenign(DetectionResult)
 }
 
 // MARK: - Detection State Machine
 
 @MainActor
-public final class DetectionStateMachine: DetectionProvider {
+public final class DetectionStateMachine {
 
     // MARK: - Dependencies
 
@@ -69,7 +67,7 @@ public final class DetectionStateMachine: DetectionProvider {
     // MARK: - Output Streams
 
     private var detectionContinuation: AsyncStream<DetectionResult>.Continuation?
-    private var eventContinuation:     AsyncStream<DetectionEvent>.Continuation?
+    private var eventContinuation:     AsyncStream<SMDetectionEvent>.Continuation?
 
     public lazy var detectionStream: AsyncStream<DetectionResult> = {
         AsyncStream { [weak self] continuation in
@@ -77,7 +75,7 @@ public final class DetectionStateMachine: DetectionProvider {
         }
     }()
 
-    public lazy var eventStream: AsyncStream<DetectionEvent> = {
+    public lazy var eventStream: AsyncStream<SMDetectionEvent> = {
         AsyncStream { [weak self] continuation in
             self?.eventContinuation = continuation
         }
@@ -301,7 +299,7 @@ public final class DetectionStateMachine: DetectionProvider {
                                          motion: mScore, temporal: tScore)
     }
 
-    private func emit(event: DetectionEvent) {
+    private func emit(event: SMDetectionEvent) {
         eventContinuation?.yield(event)
     }
 }

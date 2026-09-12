@@ -41,16 +41,16 @@ struct MonitoringView: View {
     private var statusLabel: String {
         switch appState.latestResult?.classification {
         case .none, .some(.normal): return "NORMAL"
-        case .some(.mediumConfidence): return "MEDIUM CONFIDENCE"
-        case .some(.highConfidence): return "HIGH CONFIDENCE"
+        case .some(.medium): return "MEDIUM CONFIDENCE"
+        case .some(.high): return "HIGH CONFIDENCE"
         }
     }
 
     private var statusColor: Color {
         switch appState.latestResult?.classification {
         case .none, .some(.normal): return .green
-        case .some(.mediumConfidence): return .orange
-        case .some(.highConfidence): return .red
+        case .some(.medium): return .orange
+        case .some(.high): return .red
         }
     }
 }

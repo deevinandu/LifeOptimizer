@@ -34,7 +34,12 @@ struct HomeView: View {
                         ForEach(DemoMode.allCases) { mode in
                             Button(mode.label) {
                                 appState.startMonitoring()
-                                AppEnvironment.shared.mockDetectionProvider?.trigger(mode)
+                                // Route to whichever provider is active
+                                if let live = AppEnvironment.shared.liveDetectionProvider {
+                                    live.setScenario(demoScenario(for: mode))
+                                } else {
+                                    AppEnvironment.shared.mockDetectionProvider?.trigger(mode)
+                                }
                                 navigateToMonitoring = true
                             }
                             .buttonStyle(.bordered)
@@ -56,6 +61,15 @@ struct HomeView: View {
             .navigationDestination(isPresented: $navigateToMonitoring) {
                 MonitoringView()
             }
+        }
+    }
+
+    /// Maps Laptop B's DemoMode to Laptop A's DemoScenario for the live engine.
+    private func demoScenario(for mode: DemoMode) -> DemoScenario {
+        switch mode {
+        case .normal: return .normal
+        case .medium: return .medium
+        case .high:   return .high
         }
     }
 }

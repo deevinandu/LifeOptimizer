@@ -108,10 +108,11 @@ public final class ConfidenceEngine {
     // MARK: - Classification
 
     /// Apply configurable thresholds to produce a DetectionClassification.
+    /// Uses DetectionConfig (Laptop B) as the single source of threshold truth.
     public func classify(score: Double) -> DetectionClassification {
-        if score < DetectionThresholds.normalUpperBound {
+        if score < DetectionConfig.mediumThreshold {
             return .normal
-        } else if score < DetectionThresholds.mediumUpperBound {
+        } else if score < DetectionConfig.highThreshold {
             return .medium
         } else {
             return .high

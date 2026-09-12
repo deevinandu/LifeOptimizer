@@ -9,8 +9,12 @@ import SwiftData
 
 enum DetectionClassification: String, Codable, CaseIterable {
     case normal = "NORMAL"
-    case mediumConfidence = "MEDIUM"
-    case highConfidence = "HIGH"
+    case medium = "MEDIUM"
+    case high = "HIGH"
+
+    // MARK: - Backward-compat aliases (used by Laptop B's existing views)
+    static var mediumConfidence: DetectionClassification { .medium }
+    static var highConfidence: DetectionClassification { .high }
 }
 
 struct DetectionResult: Codable, Equatable {
@@ -26,9 +30,12 @@ struct DetectionResult: Codable, Equatable {
 
 /// How the user responded to a MEDIUM-confidence prompt (or failed to).
 enum UserResponse: String, Codable {
-    case confirmedOkay
-    case needsHelp
-    case timeout
+    case okay           // "I'm fine" — benign anomaly stored, returns to NORMAL
+    case needsHelp      // "I need help" — escalate to HIGH immediately
+    case timeout        // 15-second timer expired — escalate to HIGH
+
+    // MARK: - Backward-compat alias for Laptop B code that used .confirmedOkay
+    static var confirmedOkay: UserResponse { .okay }
 }
 
 // MARK: - Emergency / networking payloads

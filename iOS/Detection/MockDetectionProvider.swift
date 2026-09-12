@@ -62,7 +62,7 @@ final class MockDetectionProvider: DetectionProvider, DetectionFeedbackReceiver 
     /// with that and double-trigger it.
     func submit(response: UserResponse, for result: DetectionResult) {
         switch response {
-        case .confirmedOkay:
+        case .okay:
             currentMode = .normal
             emit(for: .normal)
         case .needsHelp, .timeout:

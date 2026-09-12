@@ -17,9 +17,20 @@ targets:
       - path: iOS
         excludes:
           - Info.plist
+      - path: LifeOptimizer
+        excludes:
+          # Exclude the old Laptop A app shell — iOS/LifeOptimizerApp.swift is canonical
+          - App/LifeOptimizerApp.swift
+          - App/ContentView.swift
+          # Exclude old duplicate mock/demo files that now live under iOS/
+          - Demo/MockDetectionProvider.swift
     info:
       path: iOS/Info.plist
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lifeoptimizer.app
         CODE_SIGN_STYLE: Automatic
+    dependencies:
+      - sdk: ARKit.framework
+      - sdk: CoreMotion.framework
+      - sdk: AVFoundation.framework
