@@ -45,15 +45,53 @@ final class APIClient {
         return data
     }
 
+    // MARK: - Trusted Circle
+
+    func joinCircle(patientId: String, request: JoinCircleRequest) async throws -> JoinCircleResponse {
+        try await post(path: "circle/\(patientId)/join", body: request)
+    }
+
+    func updateCircleLocation(patientId: String, memberId: String, latitude: Double, longitude: Double) async throws -> CircleMember {
+        try await post(
+            path: "circle/\(patientId)/members/\(memberId)/location",
+            body: CircleLocationUpdate(latitude: latitude, longitude: longitude)
+        )
+    }
+
+    func getCircleMembers(patientId: String) async throws -> [CircleMember] {
+        try await get(path: "circle/\(patientId)/members")
+    }
+
+    private func get<Response: Decodable>(path: String) async throws -> Response {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        applyStandardHeaders(&request)
+        let (data, response) = try await session.data(for: request)
+        try validate(response)
+        return try decoder.decode(Response.self, from: data)
+    }
+
     private func post<Body: Encodable, Response: Decodable>(path: String, body: Body) async throws -> Response {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try encoder.encode(body)
+        applyStandardHeaders(&request)
 
         let (data, response) = try await session.data(for: request)
         try validate(response)
         return try decoder.decode(Response.self, from: data)
+    }
+
+    private func applyStandardHeaders(_ request: inout URLRequest) {
+        // Default is 60s -- long enough that a genuinely hung request (bad
+        // URL, dead tunnel) looks indistinguishable from "still working"
+        // for a good while. Fail fast and visibly instead.
+        request.timeoutInterval = 10
+        // ngrok's free tier serves an interstitial HTML "you're about to
+        // visit..." warning page to requests it thinks come from a
+        // browser, instead of proxying straight to the backend -- this
+        // header opts out of that so JSON always comes back as JSON.
+        request.setValue("true", forHTTPHeaderField: "ngrok-skip-browser-warning")
     }
 
     private func validate(_ response: URLResponse) throws {

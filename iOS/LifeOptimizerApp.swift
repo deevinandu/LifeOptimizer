@@ -67,6 +67,11 @@ struct LifeOptimizerApp: App {
 
         AppEnvironment.shared.apiClient = apiClient
         appState.startMonitoring()
+
+        // Resume Trusted Circle location reporting if this device already
+        // joined one in a previous session -- otherwise it'd only restart
+        // once the user happens to reopen the Circle tab.
+        CircleLocationTracker.shared.resumeIfNeeded()
     }
 
     var body: some Scene {
@@ -109,4 +114,18 @@ final class AppEnvironment {
     var mockDetectionProvider: MockDetectionProvider?
     var apiClient: APIClient?
     private init() {}
+
+    /// This device's stable Trusted Circle identity -- generated once and
+    /// persisted, not tied to any account system. Shared with a friend's
+    /// device (as a short code) so they can join this patient's circle;
+    /// also sent along with every emergency so the backend can look up
+    /// nearby circle members for this specific patient.
+    static var patientId: String {
+        if let existing = UserDefaults.standard.string(forKey: "patientId") {
+            return existing
+        }
+        let id = UUID().uuidString
+        UserDefaults.standard.set(id, forKey: "patientId")
+        return id
+    }
 }

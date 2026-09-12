@@ -28,11 +28,13 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>LifeOptimizer uses the front camera to track facial features for personalized anomaly detection. No video is recorded or transmitted.</string>
+	<string>LifeOptimizer uses the front camera to track facial features for personalized anomaly detection, and the camera to scan a Trusted Circle QR code when joining someone's circle. No video is recorded or transmitted.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>LifeOptimizer connects to your own backend server on the same Wi-Fi network to send emergency incident details when a HIGH-confidence event is detected.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>LifeOptimizer uses your location only when a possible emergency is detected, so it can be included in the incident sent to your emergency contact and simulated dispatch.</string>
+	<string>LifeOptimizer uses your location when a possible emergency is detected, so it can be included in the incident sent to your emergency contact.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>If you've joined someone's Trusted Circle, LifeOptimizer shares your location in the background so they can be alerted if you're nearby during their emergency -- even if you're not actively using the app at that moment.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>LifeOptimizer may use the microphone for an optional speech check during a medium-confidence alert.</string>
 	<key>NSMotionUsageDescription</key>
@@ -42,6 +44,10 @@
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

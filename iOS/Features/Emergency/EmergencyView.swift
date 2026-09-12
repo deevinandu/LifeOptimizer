@@ -30,6 +30,7 @@ struct EmergencyView: View {
             VStack(spacing: 8) {
                 statusRow("Location", emergencyManager.locationAcquired ? "Acquired" : "Unavailable")
                 statusRow("Emergency contact", contactStatusText)
+                statusRow("Trusted Circle", circleStatusText)
                 statusRow("Emergency services", emergencyManager.emergencyServicesLabel)
                 statusRow("Alarm", emergencyManager.alarmActive ? "ACTIVE" : "STOPPED")
                 statusRow("Incident ID", emergencyManager.incidentId ?? "-")
@@ -71,6 +72,15 @@ struct EmergencyView: View {
         }
         let label = contact.phone.isEmpty ? contact.name : "\(contact.name) (\(contact.phone))"
         return emergencyManager.contactNotified ? "\(label) — NOTIFIED (SIMULATED)" : "\(label) — not notified"
+    }
+
+    /// Whoever the backend found nearby in this patient's Trusted Circle,
+    /// if anyone -- distinct from the fixed emergency contact above.
+    private var circleStatusText: String {
+        guard let name = emergencyManager.nearbyCircleMemberName else {
+            return "No one nearby"
+        }
+        return emergencyManager.circleMemberNotified ? "\(name) — NOTIFIED (SIMULATED)" : "\(name) — not notified"
     }
 
     private func statusRow(_ title: String, _ value: String) -> some View {

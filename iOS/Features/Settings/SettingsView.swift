@@ -15,10 +15,23 @@ struct SettingsView: View {
     // actual APIClient at launch, not just while this screen is open.
     @AppStorage("backendURLString") private var backendURLString: String = "http://127.0.0.1:8000"
 
+    /// Drafts for the "Your info" section -- plain @State, NOT @AppStorage.
+    /// @AppStorage writes to UserDefaults on every keystroke, which means
+    /// there'd be no real "unsaved changes" and no way to back out of an
+    /// edit -- exactly the "Save" pattern below is supposed to prevent.
+    /// Loaded from UserDefaults in .onAppear, written back out only when
+    /// "Save" is tapped (same pattern "Emergency contact"'s fields already
+    /// use against SwiftData, just against UserDefaults here instead).
+    ///
     /// The person being monitored -- included in the emergency alert text
     /// so it says who it's about, not just a generic "possible stroke
-    /// detected". Same @AppStorage/UserDefaults key EmergencyManager reads.
-    @AppStorage("patientName") private var patientName: String = "Malavika Mohan"
+    /// detected". Same UserDefaults key EmergencyManager reads.
+    @State private var patientName: String = "Malavika Mohan"
+    /// Your identity when *you* join someone else's Trusted Circle -- same
+    /// UserDefaults keys CircleView reads, set once here rather than
+    /// re-entered every time you join a circle.
+    @State private var myCirclePhone: String = ""
+    @State private var myCircleCarrier: MobileCarrier?
 
     @State private var saveConfirmation: String?
 
@@ -26,7 +39,7 @@ struct SettingsView: View {
     // an explicit way to resign focus, the keyboard stays up forever and
     // covers the tab bar, making the whole app look stuck. This toolbar
     // button is that explicit way out.
-    private enum Field { case name, phone, backendURL, patientName }
+    private enum Field { case name, phone, backendURL, patientName, myCirclePhone }
     @FocusState private var focusedField: Field?
 
     var body: some View {
@@ -35,10 +48,20 @@ struct SettingsView: View {
                 Section {
                     TextField("Your name", text: $patientName)
                         .focused($focusedField, equals: .patientName)
+                    TextField("Your phone", text: $myCirclePhone)
+                        .keyboardType(.phonePad)
+                        .focused($focusedField, equals: .myCirclePhone)
+                    Picker("Your carrier", selection: $myCircleCarrier) {
+                        Text("Not set").tag(MobileCarrier?.none)
+                        ForEach(MobileCarrier.allCases) { c in
+                            Text(c.label).tag(MobileCarrier?.some(c))
+                        }
+                    }
+                    Button("Save") { saveYourInfo() }
                 } header: {
                     Text("Your info")
                 } footer: {
-                    Text("Included in the emergency alert text so it identifies who it's about.")
+                    Text("Name is included in the emergency alert text so it identifies who it's about. Phone/carrier are used only if you join someone else's Trusted Circle, so they can text you if you turn out to be the nearest member.")
                 }
 
                 Section {
@@ -91,6 +114,9 @@ struct SettingsView: View {
                     phone = existing.phone
                     carrier = existing.carrier.flatMap(MobileCarrier.init(rawValue:))
                 }
+                patientName = UserDefaults.standard.string(forKey: "patientName") ?? "Malavika Mohan"
+                myCirclePhone = UserDefaults.standard.string(forKey: "myCirclePhone") ?? ""
+                myCircleCarrier = UserDefaults.standard.string(forKey: "myCircleCarrierRaw").flatMap(MobileCarrier.init(rawValue:))
             }
             .alert(saveConfirmation ?? "", isPresented: Binding(
                 get: { saveConfirmation != nil },
@@ -99,6 +125,18 @@ struct SettingsView: View {
                 Button("OK") {}
             }
         }
+    }
+
+    private func saveYourInfo() {
+        // This is the actual write -- nothing above touches UserDefaults
+        // until this runs, so edits are genuinely discardable (navigate
+        // away without tapping Save and nothing changes) rather than
+        // committed key-by-key as you type.
+        UserDefaults.standard.set(patientName, forKey: "patientName")
+        UserDefaults.standard.set(myCirclePhone, forKey: "myCirclePhone")
+        UserDefaults.standard.set(myCircleCarrier?.rawValue ?? "", forKey: "myCircleCarrierRaw")
+        focusedField = nil
+        saveConfirmation = "Your info saved."
     }
 
     private func saveContact() {

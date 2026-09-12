@@ -29,8 +29,9 @@ import os
 import re
 import smtplib
 from email.mime.text import MIMEText
+from typing import Optional
 
-from models import EmergencyPayload
+from models import CircleMember, EmergencyPayload
 
 _SMTP_HOST = os.environ.get("SMTP_HOST")
 _SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
@@ -80,9 +81,10 @@ def _build_message(payload: EmergencyPayload) -> str:
     )
 
 
-def send_contact_email_to_sms(payload: EmergencyPayload) -> bool:
-    """Route a real text to the contact through their carrier's
-    email-to-SMS gateway via plain SMTP. Never raises; any failure is
+def send_email_to_sms(message: str, phone: Optional[str], carrier: Optional[str]) -> bool:
+    """Route a real text to an arbitrary recipient through their carrier's
+    email-to-SMS gateway via plain SMTP. Shared by the primary emergency
+    contact and Trusted Circle members alike. Never raises; any failure is
     caught and logged, returning False so the emergency workflow always
     completes."""
 
@@ -90,42 +92,59 @@ def send_contact_email_to_sms(payload: EmergencyPayload) -> bool:
         print("[notifications] SMTP not configured (see .env.example) -- skipping email-to-SMS.")
         return False
 
-    if not payload.contactPhone:
-        print("[notifications] No contact phone number on file -- skipping email-to-SMS.")
+    if not phone:
+        print("[notifications] No phone number on file -- skipping email-to-SMS.")
         return False
 
-    if not payload.contactCarrier:
-        print("[notifications] No contact carrier on file -- can't route email-to-SMS gateway.")
+    if not carrier:
+        print("[notifications] No carrier on file -- can't route email-to-SMS gateway.")
         return False
 
-    gateway_domain = _CARRIER_GATEWAYS.get(payload.contactCarrier)
+    gateway_domain = _CARRIER_GATEWAYS.get(carrier)
     if gateway_domain is None:
-        print(f"[notifications] Unknown carrier '{payload.contactCarrier}' -- skipping email-to-SMS.")
+        print(f"[notifications] Unknown carrier '{carrier}' -- skipping email-to-SMS.")
         return False
 
-    digits = re.sub(r"\D", "", payload.contactPhone)
+    digits = re.sub(r"\D", "", phone)
     # Most US gateways want a plain 10-digit number, no country code.
     if len(digits) == 11 and digits.startswith("1"):
         digits = digits[1:]
     if len(digits) != 10:
-        print(f"[notifications] Contact phone '{payload.contactPhone}' isn't a valid 10-digit US number -- skipping.")
+        print(f"[notifications] Phone '{phone}' isn't a valid 10-digit US number -- skipping.")
         return False
 
     to_address = f"{digits}@{gateway_domain}"
 
     try:
-        message = MIMEText(_build_message(payload))
-        message["Subject"] = "LifeOptimizer Alert"
-        message["From"] = _SMTP_FROM_EMAIL
-        message["To"] = to_address
+        mime_message = MIMEText(message)
+        mime_message["Subject"] = "LifeOptimizer Alert"
+        mime_message["From"] = _SMTP_FROM_EMAIL
+        mime_message["To"] = to_address
 
         with smtplib.SMTP(_SMTP_HOST, _SMTP_PORT) as server:
             server.starttls()
             server.login(_SMTP_USERNAME, _SMTP_PASSWORD)
-            server.sendmail(_SMTP_FROM_EMAIL, [to_address], message.as_string())
+            server.sendmail(_SMTP_FROM_EMAIL, [to_address], mime_message.as_string())
 
         print(f"[notifications] Email-to-SMS sent to {to_address}")
         return True
     except Exception as exc:  # noqa: BLE001 -- must never crash the emergency endpoint
         print(f"[notifications] Email-to-SMS failed: {exc}")
         return False
+
+
+def send_contact_email_to_sms(payload: EmergencyPayload) -> bool:
+    """Text the primary emergency contact configured in Settings."""
+    return send_email_to_sms(_build_message(payload), payload.contactPhone, payload.contactCarrier)
+
+
+def send_circle_member_alert(payload: EmergencyPayload, member: CircleMember) -> bool:
+    """Text a Trusted Circle member who was found nearby -- same alert, but
+    framed as "you're nearby" rather than "you're the designated contact"
+    so it's clear why they're getting it."""
+    message = (
+        _build_message(payload)
+        + f"\nYou're getting this because you're nearby and in {payload.patientName or 'their'} "
+          "Trusted Circle on LifeOptimizer."
+    )
+    return send_email_to_sms(message, member.phone, member.carrier)

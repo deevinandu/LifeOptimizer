@@ -1,8 +1,8 @@
-"""In-memory incident store + simulated emergency-contact/dispatch logic.
+"""SQLite-backed incident store + simulated emergency-contact/dispatch logic.
 
-Hackathon PoC: no database. Everything lives in a process-local dict, which
-is fine for a 3-hour demo and explicitly keeps the backend free of
-unnecessary infrastructure (no Postgres/Redis/etc, per project scope rules).
+Hackathon PoC: SQLite is the only persistence, and only incidents/circle
+data live there -- no Postgres/Redis/etc, per project scope rules. This
+used to be a plain in-memory dict; see db.py for why that was replaced.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
+import db
 from models import (
     EmergencyPayload,
     EmergencyResponse,
@@ -18,9 +19,9 @@ from models import (
     IncidentRecord,
     IncidentResponse,
 )
-from services import notifications
+from services import circle, notifications
 
-_incidents: dict[str, IncidentRecord] = {}
+_COLLECTION = "incidents"
 
 
 def new_incident_id() -> str:
@@ -29,7 +30,7 @@ def new_incident_id() -> str:
 
 def record_incident(payload: IncidentPayload) -> IncidentResponse:
     incident_id = payload.incidentId or new_incident_id()
-    _incidents[incident_id] = IncidentRecord(
+    record = IncidentRecord(
         incidentId=incident_id,
         timestamp=payload.timestamp,
         confidence=payload.confidence,
@@ -39,6 +40,7 @@ def record_incident(payload: IncidentPayload) -> IncidentResponse:
         emergencyTriggered=False,
         userResponse=payload.userResponse,
     )
+    db.put(_COLLECTION, incident_id, record.model_dump(mode="json"))
     return IncidentResponse(incidentId=incident_id)
 
 
@@ -53,13 +55,27 @@ def trigger_emergency(payload: EmergencyPayload) -> EmergencyResponse:
     email-to-SMS gateway when SMTP is configured (see
     services/notifications.py + .env.example); otherwise this falls back
     to the old simulated-only behavior so the backend still works out of
-    the box with no setup at all."""
+    the box with no setup at all.
+
+    Additionally (not instead), if the patient has a Trusted Circle
+    (payload.patientId) and a member is within range of the incident
+    location, that member gets the same alert -- see services/circle.py."""
 
     if notifications.is_configured():
         contact_notified = notifications.send_contact_email_to_sms(payload)
     else:
         contact_notified = bool(payload.contactName or payload.contactPhone)
-    _incidents[payload.incidentId] = IncidentRecord(
+
+    circle_member_notified = False
+    circle_member_name: Optional[str] = None
+    if payload.patientId:
+        nearest = circle.nearest_member(payload.patientId, payload.location)
+        if nearest is not None:
+            circle_member_name = nearest.name
+            if notifications.is_configured():
+                circle_member_notified = notifications.send_circle_member_alert(payload, nearest)
+
+    record = IncidentRecord(
         incidentId=payload.incidentId,
         timestamp=payload.timestamp,
         confidence=payload.confidence,
@@ -70,28 +86,34 @@ def trigger_emergency(payload: EmergencyPayload) -> EmergencyResponse:
         contactNotified=contact_notified,
         emergencyServices="SIMULATED",
     )
+    db.put(_COLLECTION, payload.incidentId, record.model_dump(mode="json"))
     return EmergencyResponse(
         contactNotified=contact_notified,
         incidentId=payload.incidentId,
+        circleMemberNotified=circle_member_notified,
+        circleMemberName=circle_member_name,
     )
 
 
 def get_incident(incident_id: str) -> Optional[IncidentRecord]:
-    return _incidents.get(incident_id)
+    data = db.get(_COLLECTION, incident_id)
+    return IncidentRecord.model_validate(data) if data else None
 
 
 def list_incidents() -> list[IncidentRecord]:
-    return sorted(_incidents.values(), key=lambda i: i.timestamp, reverse=True)
+    records = [IncidentRecord.model_validate(d) for d in db.list_all(_COLLECTION)]
+    return sorted(records, key=lambda i: i.timestamp, reverse=True)
 
 
 def cancel_incident(incident_id: str) -> Optional[IncidentRecord]:
     """Used by the app's "I'm Safe" button to record that the user cancelled
     an escalating alarm before real dispatch would have occurred."""
 
-    record = _incidents.get(incident_id)
+    record = get_incident(incident_id)
     if record is None:
         return None
     record.userResponse = "confirmedOkay"
+    db.put(_COLLECTION, incident_id, record.model_dump(mode="json"))
     return record
 
 

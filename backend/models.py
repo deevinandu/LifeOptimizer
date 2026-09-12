@@ -39,6 +39,52 @@ class EmergencyPayload(BaseModel):
     contactName: Optional[str] = None
     contactPhone: Optional[str] = None
     contactCarrier: Optional[str] = None
+    # Whoever this patient's Trusted Circle nearest-member lookup should key
+    # off of -- see services/circle.py. Optional so existing callers/tests
+    # that don't know about circles keep working unchanged.
+    patientId: Optional[str] = None
+
+
+# --- Trusted Circle ---------------------------------------------------------
+#
+# Real-time "who's near me" via Apple's Find My isn't accessible to
+# third-party apps at all (no public API exposes another user's shared
+# location, by design). This is a from-scratch, opt-in equivalent: a
+# friend/family member's OWN copy of the app reports their location
+# periodically (only while their app is open -- no special background
+# entitlement), keyed to the patient's circle by a plain shareable code.
+
+
+class JoinCircleRequest(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    carrier: Optional[str] = None
+    # The joining device's own stable identity (its own patientId) -- lets
+    # the backend recognize "this is the same device joining again" and
+    # update the existing membership instead of creating a duplicate every
+    # time (e.g. the app resuming a join on relaunch, or someone tapping
+    # Join twice).
+    memberDeviceId: Optional[str] = None
+
+
+class JoinCircleResponse(BaseModel):
+    memberId: str
+
+
+class LocationUpdate(BaseModel):
+    latitude: float
+    longitude: float
+
+
+class CircleMember(BaseModel):
+    memberId: str
+    name: str
+    phone: Optional[str] = None
+    carrier: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    lastUpdated: Optional[str] = None
+    memberDeviceId: Optional[str] = None
 
 
 class EmergencyResponse(BaseModel):
@@ -46,6 +92,8 @@ class EmergencyResponse(BaseModel):
     contactNotified: bool
     emergencyServices: Literal["SIMULATED"] = "SIMULATED"
     incidentId: str
+    circleMemberNotified: bool = False
+    circleMemberName: Optional[str] = None
 
 
 class IncidentPayload(BaseModel):

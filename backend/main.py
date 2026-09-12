@@ -19,12 +19,17 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
 from models import (
+    CircleMember,
     EmergencyPayload,
     EmergencyResponse,
     IncidentPayload,
     IncidentRecord,
     IncidentResponse,
+    JoinCircleRequest,
+    JoinCircleResponse,
+    LocationUpdate,
 )
+from services import circle as circle_service
 from services import emergency as emergency_service
 
 app = FastAPI(title="LifeOptimizer Backend", version="0.1.0")
@@ -64,6 +69,25 @@ def get_incident(incident_id: str) -> IncidentRecord:
 @app.get("/incidents", response_model=list[IncidentRecord])
 def get_incidents() -> list[IncidentRecord]:
     return emergency_service.list_incidents()
+
+
+@app.post("/circle/{patient_id}/join", response_model=JoinCircleResponse)
+def join_circle(patient_id: str, request: JoinCircleRequest) -> JoinCircleResponse:
+    member = circle_service.join_circle(patient_id, request)
+    return JoinCircleResponse(memberId=member.memberId)
+
+
+@app.post("/circle/{patient_id}/members/{member_id}/location", response_model=CircleMember)
+def update_circle_location(patient_id: str, member_id: str, location: LocationUpdate) -> CircleMember:
+    member = circle_service.update_location(patient_id, member_id, location.latitude, location.longitude)
+    if member is None:
+        raise HTTPException(status_code=404, detail="circle member not found")
+    return member
+
+
+@app.get("/circle/{patient_id}/members", response_model=list[CircleMember])
+def get_circle_members(patient_id: str) -> list[CircleMember]:
+    return circle_service.list_members(patient_id)
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

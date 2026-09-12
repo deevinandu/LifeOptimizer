@@ -7,6 +7,8 @@ struct RootTabView: View {
                 .tabItem { Label("Home", systemImage: "house") }
             HistoryView()
                 .tabItem { Label("History", systemImage: "clock") }
+            CircleView()
+                .tabItem { Label("Circle", systemImage: "person.2.circle") }
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
         }

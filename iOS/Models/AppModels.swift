@@ -105,6 +105,10 @@ struct EmergencyEvent: Codable {
     var contactPhone: String?
     /// One of `MobileCarrier`'s raw values (e.g. "verizon", "att"), or nil.
     var contactCarrier: String?
+    /// This device's stable Trusted Circle identity (see `patientId` in
+    /// LifeOptimizerApp) -- lets the backend look up nearby circle members
+    /// for this patient. Optional so older backend versions still decode.
+    var patientId: String?
 }
 
 struct EmergencyResponse: Codable {
@@ -112,6 +116,55 @@ struct EmergencyResponse: Codable {
     var contactNotified: Bool
     var emergencyServices: String
     var incidentId: String
+    var circleMemberNotified: Bool = false
+    var circleMemberName: String?
+}
+
+// MARK: - Trusted Circle
+//
+// Real-time "who's near me" via Apple's Find My isn't accessible to
+// third-party apps -- there's no public API to read who has shared their
+// location with a user, or their coordinates. This is a from-scratch,
+// opt-in equivalent: a friend/family member's own copy of the app joins a
+// specific patient's circle (by entering a shareable code) and reports
+// their location periodically while THEIR app is open -- no special
+// background-location entitlement, so it's "best effort," not continuous.
+
+struct JoinCircleRequest: Codable {
+    var name: String
+    var phone: String?
+    var carrier: String?
+    /// The joining device's own stable identity -- lets the backend
+    /// recognize repeat joins from the same device and update rather than
+    /// clone a duplicate membership.
+    var memberDeviceId: String?
+}
+
+struct JoinCircleResponse: Codable {
+    var memberId: String
+}
+
+struct CircleLocationUpdate: Codable {
+    var latitude: Double
+    var longitude: Double
+}
+
+struct CircleMember: Codable, Identifiable {
+    var memberId: String
+    var name: String
+    var phone: String?
+    var carrier: String?
+    var latitude: Double?
+    var longitude: Double?
+    /// Raw ISO-8601 string from the backend, kept as-is rather than decoded
+    /// to `Date` -- Python's `datetime.isoformat()` includes fractional
+    /// seconds when non-zero, which the default JSONDecoder `.iso8601`
+    /// strategy (used for the rest of this app's date fields) can't parse,
+    /// and this app only ever displays it, never computes with it.
+    var lastUpdated: String?
+    var memberDeviceId: String?
+
+    var id: String { memberId }
 }
 
 struct IncidentResponse: Codable {

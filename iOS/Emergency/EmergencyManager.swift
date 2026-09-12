@@ -15,6 +15,11 @@ final class EmergencyManager: ObservableObject {
     /// configured -- surfaced so EmergencyView can show *who*, not just a
     /// generic "NOTIFIED" boolean.
     @Published private(set) var notifiedContact: EmergencyContactRecord?
+    /// Set if a Trusted Circle member was found nearby and notified (or
+    /// found-but-not-notified, e.g. SMTP unconfigured) -- nil if no one in
+    /// the circle was within range, or no circle exists.
+    @Published private(set) var nearbyCircleMemberName: String?
+    @Published private(set) var circleMemberNotified = false
     @Published private(set) var emergencyServicesLabel = "SIMULATED"
     @Published private(set) var alarmActive = false
     @Published private(set) var incidentId: String?
@@ -41,6 +46,8 @@ final class EmergencyManager: ObservableObject {
         contactNotified = false
         locationAcquired = false
         notifiedContact = contact
+        nearbyCircleMemberName = nil
+        circleMemberNotified = false
 
         let generatedId = String(UUID().uuidString.prefix(8)).uppercased()
         incidentId = generatedId
@@ -73,13 +80,16 @@ final class EmergencyManager: ObservableObject {
             patientName: UserDefaults.standard.string(forKey: "patientName") ?? "Malavika Mohan",
             contactName: contact?.name,
             contactPhone: contact?.phone,
-            contactCarrier: contact?.carrier
+            contactCarrier: contact?.carrier,
+            patientId: AppEnvironment.patientId
         )
 
         do {
             let response = try await emergencyService.triggerEmergency(event: event)
             contactNotified = response.contactNotified
             emergencyServicesLabel = response.emergencyServices
+            nearbyCircleMemberName = response.circleMemberName
+            circleMemberNotified = response.circleMemberNotified
         } catch {
             let backendMessage = "Backend unreachable: \(error.localizedDescription)"
             errorMessage = errorMessage.map { "\($0)\n\(backendMessage)" } ?? backendMessage

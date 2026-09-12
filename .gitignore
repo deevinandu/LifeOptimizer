@@ -11,6 +11,9 @@ __pycache__/
 .venv/
 venv/
 
+# Runtime data (SQLite store -- see backend/db.py)
+backend/lifeoptimizer.db
+
 # Secrets (Twilio credentials, etc.) -- see backend/.env.example
 .env
 
