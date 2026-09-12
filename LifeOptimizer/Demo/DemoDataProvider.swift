@@ -61,25 +61,25 @@ public enum DemoDataProvider {
             return DetectionResult(
                 facialScore: 0.10, depthScore: 0.08, motionScore: 0.08,
                 temporalScore: 0.05, speechScore: nil,
-                finalScore: 0.10, classification: .normal
+                finalScore: 0.10, classification: .normal, timestamp: Date()
             )
         case .facialAnomaly:
             return DetectionResult(
                 facialScore: 0.65, depthScore: 0.12, motionScore: 0.10,
                 temporalScore: 0.45, speechScore: nil,
-                finalScore: 0.48, classification: .medium
+                finalScore: 0.48, classification: .medium, timestamp: Date()
             )
         case .medium:
             return DetectionResult(
                 facialScore: 0.65, depthScore: 0.20, motionScore: 0.10,
                 temporalScore: 0.55, speechScore: nil,
-                finalScore: 0.50, classification: .medium
+                finalScore: 0.50, classification: .medium, timestamp: Date()
             )
         case .high:
             return DetectionResult(
                 facialScore: 0.85, depthScore: 0.60, motionScore: 0.80,
                 temporalScore: 0.90, speechScore: nil,
-                finalScore: 0.85, classification: .high
+                finalScore: 0.85, classification: .high, timestamp: Date()
             )
         }
     }

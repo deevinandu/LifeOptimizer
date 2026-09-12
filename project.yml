@@ -24,13 +24,34 @@ targets:
           - App/ContentView.swift
           # Exclude old duplicate mock/demo files that now live under iOS/
           - Demo/MockDetectionProvider.swift
-    info:
-      path: iOS/Info.plist
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.lifeoptimizer.app
+        # Free/personal-team signing requires a bundle ID unique across ALL
+        # of Apple's system -- "com.lifeoptimizer.app" collided with
+        # someone else's, so it was changed by hand in Xcode at some point.
+        # Baked in here (rather than left as an Xcode-only edit) so it
+        # survives `xcodegen generate`, which otherwise silently reverts it
+        # back to the colliding value and reintroduces the signing error.
+        PRODUCT_BUNDLE_IDENTIFIER: com.yashasvi.lifeoptimizer
         CODE_SIGN_STYLE: Automatic
+        # iOS/Info.plist is a real, hand-authored file (usage-description
+        # strings, launch screen, scene manifest). Point INFOPLIST_FILE at
+        # it directly rather than using `info:`, which makes XcodeGen
+        # *generate* (i.e. overwrite) a plist at that path on every run.
+        INFOPLIST_FILE: iOS/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
     dependencies:
       - sdk: ARKit.framework
       - sdk: CoreMotion.framework
       - sdk: AVFoundation.framework
+  LifeOptimizerTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: LifeOptimizerTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lifeoptimizer.tests
+    dependencies:
+      - target: LifeOptimizer

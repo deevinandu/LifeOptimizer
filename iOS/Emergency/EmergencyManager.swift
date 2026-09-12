@@ -11,6 +11,10 @@ final class EmergencyManager: ObservableObject {
     @Published private(set) var locationAcquired = false
     @Published private(set) var coordinate: CLLocationCoordinate2D?
     @Published private(set) var contactNotified = false
+    /// The contact this incident was (simulated-)sent to, if one was
+    /// configured -- surfaced so EmergencyView can show *who*, not just a
+    /// generic "NOTIFIED" boolean.
+    @Published private(set) var notifiedContact: EmergencyContactRecord?
     @Published private(set) var emergencyServicesLabel = "SIMULATED"
     @Published private(set) var alarmActive = false
     @Published private(set) var incidentId: String?
@@ -36,6 +40,7 @@ final class EmergencyManager: ObservableObject {
         errorMessage = nil
         contactNotified = false
         locationAcquired = false
+        notifiedContact = contact
 
         let generatedId = String(UUID().uuidString.prefix(8)).uppercased()
         incidentId = generatedId
@@ -65,8 +70,10 @@ final class EmergencyManager: ObservableObject {
                 temporal: result.temporalScore,
                 speech: result.speechScore
             ),
+            patientName: UserDefaults.standard.string(forKey: "patientName") ?? "Malavika Mohan",
             contactName: contact?.name,
-            contactPhone: contact?.phone
+            contactPhone: contact?.phone,
+            contactCarrier: contact?.carrier
         )
 
         do {

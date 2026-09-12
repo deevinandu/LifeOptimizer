@@ -18,6 +18,7 @@ from models import (
     IncidentRecord,
     IncidentResponse,
 )
+from services import notifications
 
 _incidents: dict[str, IncidentRecord] = {}
 
@@ -42,12 +43,22 @@ def record_incident(payload: IncidentPayload) -> IncidentResponse:
 
 
 def trigger_emergency(payload: EmergencyPayload) -> EmergencyResponse:
-    """Simulate the emergency workflow: mark the incident, "notify" the
-    configured contact, and "dispatch" emergency services. Nothing here
-    contacts a real person or a real dispatch system -- see the PoC's
-    privacy/limitations notes in INTEGRATION_B.md."""
+    """Handle the emergency workflow: mark the incident, notify the
+    configured contact, and "dispatch" emergency services.
 
-    contact_notified = bool(payload.contactName or payload.contactPhone) or True
+    Emergency services (911/police/ambulance) dispatch is ALWAYS simulated
+    -- see notifications.py for why that's a hard line, not a TODO.
+
+    The personal emergency contact gets a REAL text via their carrier's
+    email-to-SMS gateway when SMTP is configured (see
+    services/notifications.py + .env.example); otherwise this falls back
+    to the old simulated-only behavior so the backend still works out of
+    the box with no setup at all."""
+
+    if notifications.is_configured():
+        contact_notified = notifications.send_contact_email_to_sms(payload)
+    else:
+        contact_notified = bool(payload.contactName or payload.contactPhone)
     _incidents[payload.incidentId] = IncidentRecord(
         incidentId=payload.incidentId,
         timestamp=payload.timestamp,

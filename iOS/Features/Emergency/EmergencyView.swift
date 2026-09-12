@@ -29,7 +29,7 @@ struct EmergencyView: View {
 
             VStack(spacing: 8) {
                 statusRow("Location", emergencyManager.locationAcquired ? "Acquired" : "Unavailable")
-                statusRow("Emergency contact", emergencyManager.contactNotified ? "NOTIFIED (SIMULATED)" : "-")
+                statusRow("Emergency contact", contactStatusText)
                 statusRow("Emergency services", emergencyManager.emergencyServicesLabel)
                 statusRow("Alarm", emergencyManager.alarmActive ? "ACTIVE" : "STOPPED")
                 statusRow("Incident ID", emergencyManager.incidentId ?? "-")
@@ -59,6 +59,18 @@ struct EmergencyView: View {
 
     private func percent(_ value: Double) -> String {
         "\(Int((value * 100).rounded()))%"
+    }
+
+    /// Shows *who* was (simulated-)notified, not just a generic status, so
+    /// it's obvious whether an emergency contact was actually configured
+    /// and used for this incident -- no name/phone means Settings never
+    /// had one saved when this HIGH event fired.
+    private var contactStatusText: String {
+        guard let contact = emergencyManager.notifiedContact, !contact.name.isEmpty else {
+            return "No contact configured"
+        }
+        let label = contact.phone.isEmpty ? contact.name : "\(contact.name) (\(contact.phone))"
+        return emergencyManager.contactNotified ? "\(label) — NOTIFIED (SIMULATED)" : "\(label) — not notified"
     }
 
     private func statusRow(_ title: String, _ value: String) -> some View {

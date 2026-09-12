@@ -8,6 +8,12 @@ import Foundation
 
 public final class MotionAnomalyDetector {
 
+    // The compiler-synthesized default init for a class is only `internal`,
+    // even when the class itself is `public` -- so DetectionStateMachine's
+    // public init (which default-constructs this) needs an explicit public
+    // one here.
+    public init() {}
+
     // MARK: - Feature Weights
 
     private static let weights: [String: Double] = [

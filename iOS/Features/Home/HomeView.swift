@@ -16,8 +16,8 @@ struct HomeView: View {
 
                 Section("Monitoring") {
                     Button("Start Monitoring") {
-                        appState.startMonitoring()
-                        navigateToMonitoring = true
+                        appState.resetToMonitoring()
+                        goToMonitoring()
                     }
                 }
 
@@ -33,14 +33,14 @@ struct HomeView: View {
                     HStack {
                         ForEach(DemoMode.allCases) { mode in
                             Button(mode.label) {
-                                appState.startMonitoring()
+                                appState.resetToMonitoring()
                                 // Route to whichever provider is active
                                 if let live = AppEnvironment.shared.liveDetectionProvider {
                                     live.setScenario(demoScenario(for: mode))
                                 } else {
                                     AppEnvironment.shared.mockDetectionProvider?.trigger(mode)
                                 }
-                                navigateToMonitoring = true
+                                goToMonitoring()
                             }
                             .buttonStyle(.bordered)
                         }
@@ -64,12 +64,30 @@ struct HomeView: View {
         }
     }
 
+    /// Forces a genuine false -> true transition on `navigateToMonitoring`
+    /// every time, instead of just setting it to `true`. `MonitoringView`
+    /// presents a `.fullScreenCover` (the Emergency screen) on top of this
+    /// pushed destination, and that combination is a known SwiftUI quirk
+    /// where `navigationDestination(isPresented:)`'s binding doesn't
+    /// reliably reset to `false` when popped -- so a plain `= true` here
+    /// can silently no-op (SwiftUI sees "still true", nothing changes) if
+    /// it was already stuck `true` from the previous visit. Resetting
+    /// first, then setting true on the next run loop turn, guarantees the
+    /// navigation actually fires.
+    private func goToMonitoring() {
+        navigateToMonitoring = false
+        DispatchQueue.main.async {
+            navigateToMonitoring = true
+        }
+    }
+
     /// Maps Laptop B's DemoMode to Laptop A's DemoScenario for the live engine.
     private func demoScenario(for mode: DemoMode) -> DemoScenario {
         switch mode {
-        case .normal: return .normal
-        case .medium: return .medium
-        case .high:   return .high
+        case .normal:        return .normal
+        case .facialAnomaly: return .facialAnomaly
+        case .medium:        return .medium
+        case .high:          return .high
         }
     }
 }

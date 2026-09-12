@@ -35,8 +35,10 @@ class EmergencyPayload(BaseModel):
     classification: Classification
     location: Optional[Location] = None
     signals: Signals
+    patientName: Optional[str] = None
     contactName: Optional[str] = None
     contactPhone: Optional[str] = None
+    contactCarrier: Optional[str] = None
 
 
 class EmergencyResponse(BaseModel):
