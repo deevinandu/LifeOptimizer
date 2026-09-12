@@ -56,6 +56,24 @@ public final class DetectionStateMachine {
     private var latestMotion: MotionFeatureVector?
     private var latestDepth:  DepthFeatureVector?
 
+    // MARK: - Classification debounce
+    //
+    // Speeding up fusionInterval/windowDuration (to catch a real event
+    // sooner) also made single noisy ticks near the normal/medium boundary
+    // flip the classification back and forth -- which showed up as the
+    // "are you okay?" prompt popping up and dismissing itself rapidly,
+    // since every tick's raw classification was forwarded straight to
+    // Laptop B with no smoothing at all. HIGH is exempted (never debounce
+    // a genuine high-confidence reading), but medium/normal must now
+    // persist for `requiredConsecutiveTicks` ticks in a row before the
+    // *emitted* classification actually changes -- raw scores in the
+    // result still update every tick, only the discrete classification is
+    // held stable.
+    private var lastRawClassification: DetectionClassification?
+    private var rawClassificationStreak = 0
+    private var stableClassification: DetectionClassification = .normal
+    private let requiredConsecutiveTicks = 3
+
     private var faceTask:   Task<Void, Never>?
     private var motionTask: Task<Void, Never>?
     private var depthTask:  Task<Void, Never>?
@@ -135,6 +153,9 @@ public final class DetectionStateMachine {
         motionProvider.stop()
         depthProvider?.stop()
         temporalAnalyzer.reset()
+        lastRawClassification = nil
+        rawClassificationStreak = 0
+        stableClassification = .normal
         transition(to: .idle)
         print("[DetectionStateMachine] Monitoring stopped.")
     }
@@ -242,25 +263,52 @@ public final class DetectionStateMachine {
         // ── Benign Check ───────────────────────────────────────────────────
         let isBenign = benignAnomalyStore.matches(facial.namedValues)
 
+        // ── Debounce ───────────────────────────────────────────────────────
+        // See the property comments above: HIGH always passes through
+        // immediately; MEDIUM/NORMAL must persist for several consecutive
+        // ticks before the stable classification actually changes.
+        let rawClassification = result.classification
+        if rawClassification == .high {
+            stableClassification = .high
+            rawClassificationStreak = 0
+        } else {
+            rawClassificationStreak = (rawClassification == lastRawClassification) ? rawClassificationStreak + 1 : 1
+            if rawClassificationStreak >= requiredConsecutiveTicks {
+                stableClassification = rawClassification
+            }
+        }
+        lastRawClassification = rawClassification
+
+        let stableResult = DetectionResult(
+            facialScore: result.facialScore,
+            depthScore: result.depthScore,
+            motionScore: result.motionScore,
+            temporalScore: result.temporalScore,
+            speechScore: result.speechScore,
+            finalScore: result.finalScore,
+            classification: stableClassification,
+            timestamp: result.timestamp
+        )
+
         // ── Emit ───────────────────────────────────────────────────────────
-        detectionContinuation?.yield(result)
-        emit(event: .classificationChanged(result))
+        detectionContinuation?.yield(stableResult)
+        emit(event: .classificationChanged(stableResult))
 
         // ── State Transitions ──────────────────────────────────────────────
         switch currentState {
         case .normal:
-            if !isBenign && result.classification == .medium {
-                escalateToMedium(result: result)
-            } else if !isBenign && result.classification == .high {
+            if !isBenign && stableClassification == .medium {
+                escalateToMedium(result: stableResult)
+            } else if !isBenign && stableClassification == .high {
                 escalateToHigh()
             }
 
         case .mediumConfidence:
-            if result.classification == .high {
+            if stableClassification == .high {
                 escalateToHigh()
-            } else if result.classification == .normal {
+            } else if stableClassification == .normal {
                 transition(to: .normal)
-                emit(event: .resolvedToNormal(result))
+                emit(event: .resolvedToNormal(stableResult))
             }
 
         case .highConfidence, .idle:

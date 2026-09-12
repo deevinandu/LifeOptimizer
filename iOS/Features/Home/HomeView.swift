@@ -8,31 +8,31 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("Personal baseline") {
-                    Label("READY (demo mode)", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                }
-
-                Section("Monitoring") {
-                    Button("Start Monitoring") {
+            Form {
+                Section {
+                    Button {
                         appState.resetToMonitoring()
+                        // Clears any stuck demo override left over from a
+                        // previous MEDIUM/HIGH demo test -- otherwise the
+                        // next stream tick can immediately re-escalate.
+                        AppEnvironment.shared.liveDetectionProvider?.resumeRealMonitoring()
                         goToMonitoring()
+                    } label: {
+                        Label("Start Monitoring", systemImage: "shield.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
                     }
-                }
-
-                Section("Emergency contact") {
-                    if let contact = contacts.first, !contact.name.isEmpty {
-                        Text("\(contact.name) — \(contact.phone)")
-                    } else {
-                        Text("Not configured").foregroundStyle(.secondary)
-                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .padding(.vertical, 4)
+                } footer: {
+                    Text("Begins live facial and motion monitoring using your on-device baseline.")
                 }
 
                 Section {
-                    HStack {
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                         ForEach(DemoMode.allCases) { mode in
-                            Button(mode.label) {
+                            Button {
                                 appState.resetToMonitoring()
                                 // Route to whichever provider is active
                                 if let live = AppEnvironment.shared.liveDetectionProvider {
@@ -41,14 +41,50 @@ struct HomeView: View {
                                     AppEnvironment.shared.mockDetectionProvider?.trigger(mode)
                                 }
                                 goToMonitoring()
+                            } label: {
+                                VStack(spacing: 6) {
+                                    Image(systemName: mode.symbolName)
+                                        .font(.title3)
+                                    Text(mode.label)
+                                        .font(.subheadline.weight(.medium))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.75)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 64)
                             }
                             .buttonStyle(.bordered)
                         }
                     }
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
                 } header: {
                     Text("Demo mode")
                 } footer: {
                     Text("Forces a NORMAL / MEDIUM / HIGH reading for demonstration purposes.")
+                }
+
+                Section("Emergency contact") {
+                    if let contact = contacts.first, !contact.name.isEmpty {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(contact.name)
+                                Text(contact.phone)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "person.crop.circle.fill")
+                                .foregroundStyle(.blue)
+                        }
+                    } else {
+                        Label {
+                            Text("Not configured — add one in Settings")
+                                .foregroundStyle(.secondary)
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                        }
+                    }
                 }
 
                 Section("Privacy") {
@@ -57,7 +93,7 @@ struct HomeView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("LifeOptimizer")
+            .navigationTitle("StrOK")
             .navigationDestination(isPresented: $navigateToMonitoring) {
                 MonitoringView()
             }
@@ -88,6 +124,17 @@ struct HomeView: View {
         case .facialAnomaly: return .facialAnomaly
         case .medium:        return .medium
         case .high:          return .high
+        }
+    }
+}
+
+private extension DemoMode {
+    var symbolName: String {
+        switch self {
+        case .normal: return "checkmark.circle"
+        case .facialAnomaly: return "face.dashed"
+        case .medium: return "exclamationmark.triangle"
+        case .high: return "bolt.trianglebadge.exclamationmark"
         }
     }
 }
