@@ -1,4 +1,4 @@
-# LifeOptimizer
+# StrOKe
 
 **An experimental personalized multimodal early-warning system for stroke-like anomalies.**
 
