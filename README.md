@@ -43,7 +43,7 @@ iPhone
 ## Project Structure
 
 ```
-LifeOptimizer/
+LifeOptimizer (StrOKe)/
 ├── App/                           Minimal app shell
 ├── Sensors/
 │   ├── Face/                      ARKit + Mock face providers
