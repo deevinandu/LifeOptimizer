@@ -1,0 +1,17 @@
+# Xcode / XcodeGen (project is generated from project.yml -- don't commit it)
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+.build/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Claude Code local settings
+.claude/
+
+# macOS
+.DS_Store
