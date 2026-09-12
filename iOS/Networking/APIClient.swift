@@ -62,6 +62,14 @@ final class APIClient {
         try await get(path: "circle/\(patientId)/members")
     }
 
+    func removeCircleMember(patientId: String, memberId: String) async throws {
+        var request = URLRequest(url: baseURL.appendingPathComponent("circle/\(patientId)/members/\(memberId)"))
+        request.httpMethod = "DELETE"
+        applyStandardHeaders(&request)
+        let (_, response) = try await session.data(for: request)
+        try validate(response)
+    }
+
     private func get<Response: Decodable>(path: String) async throws -> Response {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         applyStandardHeaders(&request)

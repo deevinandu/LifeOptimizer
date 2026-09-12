@@ -1,5 +1,6 @@
 import CoreLocation
 import Foundation
+import UIKit
 
 /// Continuously reports this device's location to the backend for
 /// whichever Trusted Circle it has joined -- runs independent of whether
@@ -29,6 +30,14 @@ final class CircleLocationTracker: NSObject, ObservableObject {
     @Published private(set) var isBackgroundCapable = false
     @Published private(set) var lastError: String?
     @Published private(set) var lastSentAt: Date?
+    /// True when the system only granted "While Using the App" -- iOS
+    /// itself does not let an app's *first* location prompt offer only
+    /// "Always Allow" (it always includes "While Using"/"Don't Allow" too,
+    /// as a deliberate anti-dark-pattern restriction we can't route
+    /// around). This flag is how the UI surfaces "you'll need to flip
+    /// this in Settings yourself" instead of silently running in a
+    /// degraded, foreground-only mode.
+    @Published private(set) var needsAlwaysUpgrade = false
 
     private let manager = CLLocationManager()
     private var patientId: String?

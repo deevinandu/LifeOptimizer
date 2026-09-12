@@ -58,22 +58,23 @@ def trigger_emergency(payload: EmergencyPayload) -> EmergencyResponse:
     the box with no setup at all.
 
     Additionally (not instead), if the patient has a Trusted Circle
-    (payload.patientId) and a member is within range of the incident
-    location, that member gets the same alert -- see services/circle.py."""
+    (payload.patientId), EVERY member of it gets the same alert -- not
+    just whoever's nearest -- see services/circle.py."""
 
     if notifications.is_configured():
         contact_notified = notifications.send_contact_email_to_sms(payload)
     else:
         contact_notified = bool(payload.contactName or payload.contactPhone)
 
-    circle_member_notified = False
-    circle_member_name: Optional[str] = None
+    circle_members_notified: list[str] = []
     if payload.patientId:
-        nearest = circle.nearest_member(payload.patientId, payload.location)
-        if nearest is not None:
-            circle_member_name = nearest.name
+        for member in circle.list_members(payload.patientId):
             if notifications.is_configured():
-                circle_member_notified = notifications.send_circle_member_alert(payload, nearest)
+                if notifications.send_circle_member_alert(payload, member):
+                    circle_members_notified.append(member.name)
+            elif member.phone:
+                # Simulated fallback, consistent with contact_notified above.
+                circle_members_notified.append(member.name)
 
     record = IncidentRecord(
         incidentId=payload.incidentId,
@@ -90,8 +91,7 @@ def trigger_emergency(payload: EmergencyPayload) -> EmergencyResponse:
     return EmergencyResponse(
         contactNotified=contact_notified,
         incidentId=payload.incidentId,
-        circleMemberNotified=circle_member_notified,
-        circleMemberName=circle_member_name,
+        circleMembersNotified=circle_members_notified,
     )
 
 

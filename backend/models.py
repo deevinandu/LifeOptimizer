@@ -8,7 +8,7 @@ classification label, a location, and a timestamp.
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -92,8 +92,11 @@ class EmergencyResponse(BaseModel):
     contactNotified: bool
     emergencyServices: Literal["SIMULATED"] = "SIMULATED"
     incidentId: str
-    circleMemberNotified: bool = False
-    circleMemberName: Optional[str] = None
+    # Names of every Trusted Circle member who was actually texted --
+    # ALL circle members get notified, not just whoever's nearest (that
+    # was the original design; changed on request -- everyone in a
+    # "trusted circle" should know, not just whoever happens to be close).
+    circleMembersNotified: List[str] = []
 
 
 class IncidentPayload(BaseModel):

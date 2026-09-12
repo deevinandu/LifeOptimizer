@@ -15,18 +15,12 @@ outside this app's own users.
 
 from __future__ import annotations
 
-import math
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
 import db
-from models import CircleMember, JoinCircleRequest, Location
-
-# Approximates "within a 5-minute radius" -- we have no routing/ETA API to
-# compute actual drive/walk time, so this is a straight-line distance
-# stand-in (roughly what's coverable in ~5 minutes by car in a city).
-NEARBY_RADIUS_KM = 3.0
+from models import CircleMember, JoinCircleRequest
 
 
 def _collection(patient_id: str) -> str:
@@ -75,29 +69,9 @@ def list_members(patient_id: str) -> list[CircleMember]:
     return [CircleMember.model_validate(d) for d in db.list_all(_collection(patient_id))]
 
 
-def _haversine_km(a: Location, b_lat: float, b_lon: float) -> float:
-    r = 6371.0  # Earth radius, km
-    lat1, lon1, lat2, lon2 = map(math.radians, [a.latitude, a.longitude, b_lat, b_lon])
-    dlat = lat2 - lat1
-    dlon = lon2 - lon1
-    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    return 2 * r * math.asin(math.sqrt(h))
-
-
-def nearest_member(patient_id: str, incident_location: Optional[Location]) -> Optional[CircleMember]:
-    """The circle member closest to the incident, within NEARBY_RADIUS_KM.
-    None if there's no incident location, no circle, or nobody close
-    enough (a member who hasn't opened their app recently has a stale or
-    absent location and won't be considered "nearby" -- that's the tradeoff
-    of foreground-only reporting)."""
-
-    if incident_location is None:
-        return None
-    members = list_members(patient_id)
-    candidates = [m for m in members if m.latitude is not None and m.longitude is not None]
-    if not candidates:
-        return None
-
-    nearest = min(candidates, key=lambda m: _haversine_km(incident_location, m.latitude, m.longitude))
-    distance = _haversine_km(incident_location, nearest.latitude, nearest.longitude)
-    return nearest if distance <= NEARBY_RADIUS_KM else None
+def remove_member(patient_id: str, member_id: str) -> bool:
+    """Returns False if there was no such member (caller should 404)."""
+    if db.get(_collection(patient_id), member_id) is None:
+        return False
+    db.delete(_collection(patient_id), member_id)
+    return True

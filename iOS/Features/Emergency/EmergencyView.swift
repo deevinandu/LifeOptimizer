@@ -74,13 +74,12 @@ struct EmergencyView: View {
         return emergencyManager.contactNotified ? "\(label) — NOTIFIED (SIMULATED)" : "\(label) — not notified"
     }
 
-    /// Whoever the backend found nearby in this patient's Trusted Circle,
-    /// if anyone -- distinct from the fixed emergency contact above.
+    /// Everyone in this patient's Trusted Circle who was actually
+    /// notified -- distinct from the fixed emergency contact above.
     private var circleStatusText: String {
-        guard let name = emergencyManager.nearbyCircleMemberName else {
-            return "No one nearby"
-        }
-        return emergencyManager.circleMemberNotified ? "\(name) — NOTIFIED (SIMULATED)" : "\(name) — not notified"
+        let names = emergencyManager.circleMembersNotified
+        if names.isEmpty { return "No circle members notified" }
+        return "\(names.joined(separator: ", ")) — NOTIFIED (SIMULATED)"
     }
 
     private func statusRow(_ title: String, _ value: String) -> some View {

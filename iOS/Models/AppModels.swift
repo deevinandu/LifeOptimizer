@@ -116,8 +116,9 @@ struct EmergencyResponse: Codable {
     var contactNotified: Bool
     var emergencyServices: String
     var incidentId: String
-    var circleMemberNotified: Bool = false
-    var circleMemberName: String?
+    /// Names of every Trusted Circle member who was actually texted -- ALL
+    /// circle members, not just whoever's nearest.
+    var circleMembersNotified: [String] = []
 }
 
 // MARK: - Trusted Circle

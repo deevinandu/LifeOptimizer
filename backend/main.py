@@ -90,6 +90,14 @@ def get_circle_members(patient_id: str) -> list[CircleMember]:
     return circle_service.list_members(patient_id)
 
 
+@app.delete("/circle/{patient_id}/members/{member_id}")
+def remove_circle_member(patient_id: str, member_id: str) -> dict:
+    removed = circle_service.remove_member(patient_id, member_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="circle member not found")
+    return {"status": "removed"}
+
+
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard() -> str:
     """Minimal, unstyled judge-facing view of incoming incidents. Not meant

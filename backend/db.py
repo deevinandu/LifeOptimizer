@@ -68,3 +68,11 @@ def list_all(collection: str) -> list[dict]:
             (collection,),
         ).fetchall()
     return [json.loads(row[0]) for row in rows]
+
+
+def delete(collection: str, doc_id: str) -> None:
+    with _connect() as conn:
+        conn.execute(
+            "DELETE FROM documents WHERE collection = ? AND id = ?",
+            (collection, doc_id),
+        )

@@ -136,6 +136,13 @@ struct CircleView: View {
                                         .foregroundStyle(.secondary)
                                 }
                             }
+                            .swipeActions {
+                                Button(role: .destructive) {
+                                    Task { await removeMember(member) }
+                                } label: {
+                                    Label("Remove", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                     Button("Refresh") { Task { await loadMembers() } }
@@ -288,6 +295,20 @@ struct CircleView: View {
         } catch {
             // Non-fatal -- just leave the list as-is (likely empty on first load).
             print("[CircleView] Failed to load members: \(error)")
+        }
+    }
+
+    private func removeMember(_ member: CircleMember) async {
+        guard let apiClient = AppEnvironment.shared.apiClient else { return }
+        // Remove optimistically so the row disappears immediately rather
+        // than waiting on the network -- reload afterward reconciles with
+        // the backend regardless (e.g. if the delete actually failed).
+        members.removeAll { $0.id == member.id }
+        do {
+            try await apiClient.removeCircleMember(patientId: AppEnvironment.patientId, memberId: member.memberId)
+        } catch {
+            joinStatus = "Couldn't remove \(member.name): \(error.localizedDescription)"
+            await loadMembers()
         }
     }
 

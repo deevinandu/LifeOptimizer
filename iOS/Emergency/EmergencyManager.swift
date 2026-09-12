@@ -15,11 +15,9 @@ final class EmergencyManager: ObservableObject {
     /// configured -- surfaced so EmergencyView can show *who*, not just a
     /// generic "NOTIFIED" boolean.
     @Published private(set) var notifiedContact: EmergencyContactRecord?
-    /// Set if a Trusted Circle member was found nearby and notified (or
-    /// found-but-not-notified, e.g. SMTP unconfigured) -- nil if no one in
-    /// the circle was within range, or no circle exists.
-    @Published private(set) var nearbyCircleMemberName: String?
-    @Published private(set) var circleMemberNotified = false
+    /// Names of every Trusted Circle member actually notified -- everyone
+    /// in the circle, not just whoever's nearest.
+    @Published private(set) var circleMembersNotified: [String] = []
     @Published private(set) var emergencyServicesLabel = "SIMULATED"
     @Published private(set) var alarmActive = false
     @Published private(set) var incidentId: String?
@@ -46,8 +44,7 @@ final class EmergencyManager: ObservableObject {
         contactNotified = false
         locationAcquired = false
         notifiedContact = contact
-        nearbyCircleMemberName = nil
-        circleMemberNotified = false
+        circleMembersNotified = []
 
         let generatedId = String(UUID().uuidString.prefix(8)).uppercased()
         incidentId = generatedId
@@ -88,8 +85,7 @@ final class EmergencyManager: ObservableObject {
             let response = try await emergencyService.triggerEmergency(event: event)
             contactNotified = response.contactNotified
             emergencyServicesLabel = response.emergencyServices
-            nearbyCircleMemberName = response.circleMemberName
-            circleMemberNotified = response.circleMemberNotified
+            circleMembersNotified = response.circleMembersNotified
         } catch {
             let backendMessage = "Backend unreachable: \(error.localizedDescription)"
             errorMessage = errorMessage.map { "\($0)\n\(backendMessage)" } ?? backendMessage
