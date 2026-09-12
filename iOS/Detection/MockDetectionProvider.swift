@@ -4,6 +4,7 @@ import Foundation
 /// (spec section "DEMO MODE").
 enum DemoMode: String, CaseIterable, Identifiable {
     case normal
+    case facialAnomaly
     case medium
     case high
 
@@ -12,6 +13,7 @@ enum DemoMode: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .normal: return "Normal"
+        case .facialAnomaly: return "Facial Anomaly"
         case .medium: return "Medium"
         case .high: return "High"
         }
@@ -88,6 +90,8 @@ final class MockDetectionProvider: DetectionProvider, DetectionFeedbackReceiver 
         switch mode {
         case .normal:
             (facial, depth, motion, temporal) = (0.10, 0.05, 0.08, 0.05)
+        case .facialAnomaly:
+            (facial, depth, motion, temporal) = (0.65, 0.12, 0.10, 0.45)
         case .medium:
             (facial, depth, motion, temporal) = (0.65, 0.40, 0.10, 0.55)
         case .high:

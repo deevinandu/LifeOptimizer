@@ -21,7 +21,15 @@ struct LifeOptimizerApp: App {
         // Use the real Laptop A engine when ARKit face tracking is supported
         // (physical iPhone with TrueDepth front camera).
         // Fall back to MockDetectionProvider on Simulator or unsupported devices.
-        let apiClient = APIClient()
+        //
+        // Seed from whatever SettingsView last persisted (same UserDefaults
+        // key as its @AppStorage) so a URL you applied on a previous launch
+        // is still in effect -- previously this always hardcoded 127.0.0.1
+        // at startup regardless of what you'd set in Settings.
+        let storedBackendURLString = UserDefaults.standard.string(forKey: "backendURLString")
+        let backendURL = storedBackendURLString.flatMap(URL.init(string:))
+            ?? URL(string: "http://127.0.0.1:8000")!
+        let apiClient = APIClient(baseURL: backendURL)
 
         let detectionProvider: DetectionProvider & DetectionFeedbackReceiver
         if ARFaceTrackingConfiguration.isSupported {
@@ -63,10 +71,30 @@ struct LifeOptimizerApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootTabView()
+            RootView()
                 .environmentObject(appState)
                 .environmentObject(emergencyManager)
                 .modelContainer(modelContainer)
+        }
+    }
+}
+
+/// Gates first-launch setup (personal baseline calibration + emergency
+/// contact) in front of the normal app. Monitoring itself always starts at
+/// launch regardless (see LifeOptimizerApp.init) -- this only decides
+/// whether the onboarding UI or the regular tab UI is what's on screen.
+/// Demo mode (Home's Normal / Facial Anomaly / Medium / High buttons)
+/// stays available in RootTabView either way.
+private struct RootView: View {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+
+    var body: some View {
+        if hasCompletedOnboarding {
+            RootTabView()
+        } else {
+            OnboardingView {
+                hasCompletedOnboarding = true
+            }
         }
     }
 }

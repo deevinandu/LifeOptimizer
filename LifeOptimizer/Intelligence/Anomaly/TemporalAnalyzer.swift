@@ -33,7 +33,10 @@ public final class TemporalAnalyzer {
     // MARK: - Init
 
     public init(
-        windowDuration: TimeInterval = 3.0,
+        // Shortened from 3.0s -- a shorter window ages out older normal
+        // readings faster, so a real onset isn't diluted by readings from
+        // before it started.
+        windowDuration: TimeInterval = 1.5,
         anomalyFraction: Double = 0.6,
         frameAnomalyThreshold: Double = 0.40
     ) {

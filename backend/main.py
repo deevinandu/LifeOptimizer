@@ -11,6 +11,10 @@ Run locally:
 
 from __future__ import annotations
 
+from dotenv import load_dotenv
+
+load_dotenv()  # picks up backend/.env (Twilio credentials) if present -- see .env.example
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 

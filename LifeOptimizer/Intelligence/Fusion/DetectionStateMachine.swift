@@ -62,7 +62,9 @@ public final class DetectionStateMachine {
     private var fusionTask: Task<Void, Never>?
 
     /// How often to compute and emit a fused DetectionResult (seconds).
-    public var fusionInterval: TimeInterval = 0.5
+    /// Lowered from 0.5s -- a real event needs to be caught within a
+    /// fraction of a second, not evaluated twice a second.
+    public var fusionInterval: TimeInterval = 0.2
 
     // MARK: - Output Streams
 

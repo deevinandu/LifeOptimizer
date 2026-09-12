@@ -7,7 +7,13 @@ import SwiftData
 // It must never reach into ARKit, Core Motion, or baseline internals -- see
 // `Detection/DetectionProvider.swift`.
 
-enum DetectionClassification: String, Codable, CaseIterable {
+// NOTE: public — LifeOptimizer/'s engine code (ConfidenceEngine,
+// DetectionStateMachine, DemoDataProvider, PersistedDetectionEvent) exposes
+// these three types through its own `public` API. Even though both trees
+// compile into one application target (not separate modules), Swift still
+// rejects a `public` declaration whose signature uses a less-accessible
+// type, so these have to be `public` too for the merged target to build.
+public enum DetectionClassification: String, Codable, CaseIterable {
     case normal = "NORMAL"
     case medium = "MEDIUM"
     case high = "HIGH"
@@ -17,7 +23,7 @@ enum DetectionClassification: String, Codable, CaseIterable {
     static var highConfidence: DetectionClassification { .high }
 }
 
-struct DetectionResult: Codable, Equatable {
+public struct DetectionResult: Codable, Equatable {
     var facialScore: Double
     var depthScore: Double
     var motionScore: Double
@@ -29,13 +35,42 @@ struct DetectionResult: Codable, Equatable {
 }
 
 /// How the user responded to a MEDIUM-confidence prompt (or failed to).
-enum UserResponse: String, Codable {
+public enum UserResponse: String, Codable {
     case okay           // "I'm fine" — benign anomaly stored, returns to NORMAL
     case needsHelp      // "I need help" — escalate to HIGH immediately
     case timeout        // 15-second timer expired — escalate to HIGH
 
     // MARK: - Backward-compat alias for Laptop B code that used .confirmedOkay
     static var confirmedOkay: UserResponse { .okay }
+}
+
+// MARK: - Mobile Carrier (for email-to-SMS gateway)
+
+/// Major US carriers, used to route a real text through that carrier's
+/// email-to-SMS gateway (e.g. `<number>@vtext.com` for Verizon) since no
+/// dedicated SMS API is configured on the backend (Twilio's trial tier
+/// blocks any custom message content, SMS or WhatsApp -- see
+/// backend/services/notifications.py). The backend owns the actual
+/// gateway-domain mapping; this enum just needs to stay in sync with it
+/// for the picker labels.
+enum MobileCarrier: String, Codable, CaseIterable, Identifiable {
+    case verizon, att, tmobile, sprint, uscellular, googleFi, boost, cricket, metro
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .verizon:    return "Verizon"
+        case .att:        return "AT&T"
+        case .tmobile:    return "T-Mobile"
+        case .sprint:     return "Sprint"
+        case .uscellular: return "US Cellular"
+        case .googleFi:   return "Google Fi"
+        case .boost:      return "Boost Mobile"
+        case .cricket:    return "Cricket"
+        case .metro:      return "Metro by T-Mobile"
+        }
+    }
 }
 
 // MARK: - Emergency / networking payloads
@@ -63,8 +98,13 @@ struct EmergencyEvent: Codable {
     var classification: DetectionClassification
     var location: GeoCoordinate?
     var signals: SignalBreakdown
+    /// The person being monitored (not the contact) -- so the alert text
+    /// can say who it's about, e.g. "Malavika Mohan may be having...".
+    var patientName: String?
     var contactName: String?
     var contactPhone: String?
+    /// One of `MobileCarrier`'s raw values (e.g. "verizon", "att"), or nil.
+    var contactCarrier: String?
 }
 
 struct EmergencyResponse: Codable {
@@ -148,9 +188,13 @@ final class DetectionEvent {
 final class EmergencyContactRecord {
     var name: String
     var phone: String
+    /// `MobileCarrier.rawValue`, or nil if unset/unknown. Needed to route
+    /// a real text through the contact's carrier's email-to-SMS gateway.
+    var carrier: String?
 
-    init(name: String = "", phone: String = "") {
+    init(name: String = "", phone: String = "", carrier: String? = nil) {
         self.name = name
         self.phone = phone
+        self.carrier = carrier
     }
 }

@@ -101,11 +101,11 @@ public final class MockFaceFeatureProvider: FaceFeatureProvider {
                 frownRight: 0.05,
                 stretchLeft: 0.05,
                 stretchRight: 0.70,
+                jawOpen:    0.25,
                 blinkLeft:  0.90,
                 blinkRight: 0.05,
                 squintLeft: 0.0,
                 squintRight: 0.55,
-                jawOpen:    0.25,
                 pitch: 0.0, yaw: 0.0, roll: 0.0
             )
 

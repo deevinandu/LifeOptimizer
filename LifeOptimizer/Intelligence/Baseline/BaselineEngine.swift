@@ -67,6 +67,9 @@ public final class BaselineEngine {
 
     /// Minimum samples before we trust the baseline for anomaly gating.
     /// Below this count all observations are accepted to bootstrap the baseline.
+    /// Lowered from 30 (~15s at the default fusion interval) to shrink the
+    /// window right after you start monitoring where nothing gets flagged
+    /// as anomalous no matter how severe it is.
     public var bootstrapThreshold: Int
 
     private let epsilon: Double = 1e-6
@@ -82,7 +85,7 @@ public final class BaselineEngine {
         alpha: Double = 0.05,
         varianceAlpha: Double = 0.08,
         anomalyZThreshold: Double = 3.0,
-        bootstrapThreshold: Int = 30
+        bootstrapThreshold: Int = 10
     ) {
         self.alpha              = alpha
         self.varianceAlpha      = varianceAlpha

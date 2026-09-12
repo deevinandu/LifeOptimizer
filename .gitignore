@@ -3,12 +3,16 @@
 *.xcworkspace/
 DerivedData/
 .build/
+.swiftpm/
 
 # Python
 __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Secrets (Twilio credentials, etc.) -- see backend/.env.example
+.env
 
 # Claude Code local settings
 .claude/

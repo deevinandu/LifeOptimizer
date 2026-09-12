@@ -60,6 +60,35 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Forces the workflow back to a clean MONITORING state regardless of
+    /// what it's currently doing. Meant for explicit, user-initiated
+    /// "(re)start monitoring" actions -- Home's "Start Monitoring" button
+    /// and the demo-mode buttons -- as opposed to `startMonitoring()`,
+    /// which only starts the underlying detection stream once at app
+    /// launch and is a no-op on every later call (the stream keeps running
+    /// continuously in the background regardless). Without this, `phase`
+    /// getting stuck at `.awaitingResponse` or `.emergency` -- e.g. you
+    /// backed out of a MEDIUM demo without responding, and its 15s
+    /// countdown auto-escalated in the background while you weren't
+    /// looking -- silently blocked every later "Start Monitoring" tap:
+    /// it re-showed the same stuck alert instead of doing anything.
+    func resetToMonitoring() {
+        if phase == .emergency {
+            emergencyManager.markSafe()
+        }
+        cancelCountdown()
+        pendingMediumResult = nil
+        phase = .monitoring
+        if listenTask == nil {
+            listenTask = Task { [weak self] in
+                guard let self else { return }
+                for await result in self.detectionProvider.detectionStream {
+                    self.handle(result)
+                }
+            }
+        }
+    }
+
     func stopMonitoring() {
         listenTask?.cancel()
         listenTask = nil

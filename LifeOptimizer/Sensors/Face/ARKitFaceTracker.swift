@@ -70,7 +70,15 @@ public final class ARKitFaceTracker: NSObject, FaceFeatureProvider {
 }
 
 // MARK: - ARSCNViewDelegate
-
+//
+// NOTE: these renderer(_:didUpdate/didAdd:for:) callbacks only fire while
+// `sceneView` is actually part of the visible view hierarchy and rendering
+// frames. This app never shows a camera preview -- `sceneView` is created
+// purely to host an ARSession headlessly -- so these never fire in
+// practice. Left in place in case a future camera-preview UI attaches this
+// view to the screen, but face data is actually delivered via
+// ARSessionDelegate below, which fires regardless of whether anything is
+// on screen.
 extension ARKitFaceTracker: ARSCNViewDelegate {
     public func renderer(_ renderer: SCNSceneRenderer,
                          didUpdate node: SCNNode,
@@ -94,8 +102,28 @@ extension ARKitFaceTracker: ARSCNViewDelegate {
 }
 
 // MARK: - ARSessionDelegate
+//
+// This is the delegate that actually matters for a headless (no camera
+// preview on screen) face tracker: it fires straight off the ARSession's
+// frame processing, independent of any ARSCNView being rendered.
 
 extension ARKitFaceTracker: ARSessionDelegate {
+    public func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
+        handleAnchorUpdate(anchors)
+    }
+
+    public func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
+        handleAnchorUpdate(anchors)
+    }
+
+    private func handleAnchorUpdate(_ anchors: [ARAnchor]) {
+        guard let faceAnchor = anchors.compactMap({ $0 as? ARFaceAnchor }).first else { return }
+        let vector = FaceFeatureExtractor.extract(from: faceAnchor)
+        Task { @MainActor in
+            self.emit(vector)
+        }
+    }
+
     public func session(_ session: ARSession, didFailWithError error: Error) {
         print("[ARKitFaceTracker] Session error: \(error.localizedDescription)")
         isRunning = false
