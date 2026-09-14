@@ -1,4 +1,4 @@
-# LifeOptimizer
+# StrOK
 
 **An experimental personalized multimodal early-warning system for stroke-like anomalies.**
 
@@ -43,7 +43,7 @@ iPhone
 ## Project Structure
 
 ```
-LifeOptimizer/
+LifeOptimizer (StrOK)/
 ├── App/                           Minimal app shell
 ├── Sensors/
 │   ├── Face/                      ARKit + Mock face providers
