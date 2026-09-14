@@ -18,7 +18,11 @@ enum AppPhase: Equatable {
 /// its published state and call `respond(_:)` / `startMonitoring()`.
 @MainActor
 final class AppState: ObservableObject {
-    static let countdownSeconds = 15
+    // 5s: just long enough to read "are you okay?" and tap a button --
+    // if a real stroke is happening, a long confirmation window only
+    // delays getting help, and the buzzer is precisely the mechanism
+    // that summons help in the case where nothing gets tapped at all.
+    static let countdownSeconds = 5
 
     @Published private(set) var phase: AppPhase = .idle
     @Published private(set) var latestResult: DetectionResult?

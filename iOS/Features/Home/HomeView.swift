@@ -9,14 +9,13 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Personal baseline") {
-                    Label("READY (demo mode)", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                }
-
                 Section("Monitoring") {
                     Button("Start Monitoring") {
                         appState.resetToMonitoring()
+                        // Clears any stuck demo override left over from a
+                        // previous MEDIUM/HIGH demo test -- otherwise the
+                        // next stream tick can immediately re-escalate.
+                        AppEnvironment.shared.liveDetectionProvider?.resumeRealMonitoring()
                         goToMonitoring()
                     }
                 }

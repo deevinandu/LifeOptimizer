@@ -64,19 +64,22 @@ def _build_message(payload: EmergencyPayload) -> str:
 
     who = payload.patientName or "Someone using LifeOptimizer"
 
-    # ALL-CAPS header + repeated emoji: the only things we actually control
-    # over a plain text message that make it visually stand out in a
-    # notification preview -- there's no way to give it a distinct SOUND or
-    # priority banner over SMS/email-gateway (that requires the recipient's
-    # own phone to treat this sender specially; see the reply that
-    # accompanies this code change for the actual way to get that).
+    # Plain text, single emoji, no ALL-CAPS -- a heavier header (repeated
+    # emoji + all-caps banner) was one likely contributor to carrier
+    # email-to-SMS gateways flagging this as abuse under their Acceptable
+    # Use Policy (confirmed via a real bounce: "550 5.1.1 server
+    # temporarily unavailable AUP#..."), independent of send frequency.
+    # There's still no way to give this a distinct SOUND or priority
+    # banner over plain SMS/email-gateway -- that requires the recipient's
+    # own phone to treat this sender specially (see the reply that
+    # accompanies this code change for the actual workaround).
     return (
-        "🚨🚨 LIFEOPTIMIZER EMERGENCY ALERT 🚨🚨\n"
-        f"{who} may be having a {payload.classification.lower()}-confidence "
-        f"stroke-like event (confidence {payload.confidence:.0%}) at "
-        f"{payload.timestamp}.{location_line}\n"
-        "This is an automated alert from a hackathon prototype, not a "
-        "medical diagnosis -- please check on them now."
+        f"LifeOptimizer alert: {who} may be having a "
+        f"{payload.classification.lower()}-confidence stroke-like event "
+        f"(confidence {payload.confidence:.0%}) at {payload.timestamp}."
+        f"{location_line}\n"
+        "Automated alert from a hackathon prototype, not a medical "
+        "diagnosis -- please check on them now."
     )
 
 

@@ -169,4 +169,29 @@ final class LiveDetectionProvider: DetectionProvider, DetectionFeedbackReceiver 
             }
         }
     }
+
+    /// Called by Home's plain "Start Monitoring" button -- as opposed to the
+    /// demo-mode buttons, which call `setScenario` directly. Without this, a
+    /// previous demo test (say, HIGH) left `forcedScenario` set and its
+    /// `demoTask` still ticking out that same fake HIGH reading every
+    /// second forever -- so "Start Monitoring" would appear to do nothing:
+    /// the very next tick re-escalated straight back to the emergency
+    /// screen regardless of what was tapped.
+    ///
+    /// - Mock/demo-mode engine (Simulator): there's no other "real" signal
+    ///   to fall back to since sensor input is entirely synthetic, so this
+    ///   resets the mocks to `.normal`, same as tapping the NORMAL demo
+    ///   button would.
+    /// - Real hardware: simply clears the override so genuine
+    ///   ARKit/CoreMotion-driven readings start flowing again, rather than
+    ///   replacing one fixed fake reading (HIGH) with another (NORMAL).
+    func resumeRealMonitoring() {
+        if stateMachine.faceProvider is MockFaceFeatureProvider {
+            setScenario(.normal)
+        } else {
+            forcedScenario = nil
+            demoTask?.cancel()
+            demoTask = nil
+        }
+    }
 }
